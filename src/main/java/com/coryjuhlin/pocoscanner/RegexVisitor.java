@@ -8,13 +8,13 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import java.util.ArrayList;
 import java.util.Stack;
 
-/**
- * Created by cory on 4/13/15.
- */
+
 public class RegexVisitor extends PoCoParserBaseVisitor<String> {
-    Stack<StringBuilder> regexStack;
+    private Stack<StringBuilder> regexStack;
     public ArrayList<String> matchStrings;
     private VariableBox variableBox;
+    private Stack<VariablePart> varRefStack = new Stack<>();
+    private boolean runtimeReference = false;
 
     public RegexVisitor(VariableBox variableBox) {
         regexStack = new Stack<>();
@@ -36,40 +36,66 @@ public class RegexVisitor extends PoCoParserBaseVisitor<String> {
         regexStack.push(new StringBuilder());
 
         // Only visit first RE (second one would be the value matcher of RESULT IREs)
-        String text = visit(ctx.re(0));
+        //String text = visit(ctx.re(0));
+        visit(ctx.re(0));
 
-        regexStack.pop();
-        matchStrings.add(text);
+        StringBuilder builder = regexStack.pop();
+        if (!runtimeReference) {
+            matchStrings.add(builder.toString());
+        }
+
+        runtimeReference = false;
         return null;
+    }
+
+    VariablePart parseVarRef(@NotNull PoCoParser.ReContext ctx) {
+        varRefStack.push(new VariablePart(ctx.qid().getText(), true));
+        if (ctx.opparamlist() != null) {
+            visitOpparamlist(ctx.opparamlist());
+        }
+        VariablePart toReturn = varRefStack.pop();
+        return toReturn;
     }
 
     @Override
     public String visitRe(@NotNull PoCoParser.ReContext ctx) {
-        if (regexStack.size() == 0) {
+        if (regexStack.size() == 0 || runtimeReference) {
             return null;
         }
 
+        StringBuilder localBuilder = new StringBuilder();
+
         if (ctx.DOLLAR() != null) {
-            // TODO: Do something about the variable reference
+            VariablePart ref = parseVarRef(ctx);
+            Variable var = variableBox.GetVar(ref.GetReference());
+
+            if (var == null || var.isVarType()) {
+                runtimeReference = true;
+            } else {
+                localBuilder.append(var.Resolve(variableBox, ref.GetArguments()));
+            }
         }
 
-        if (ctx.AT() != null) {
+        else if (ctx.AT() != null) {
             // TODO: Do something about the variable binding
         }
 
-        /* Iterate over all children. Check and see if their visit
-         * method was customized to return a string. Otherwise, get
-         * the raw text.
-         */
-        StringBuilder builder = new StringBuilder();
-        for (ParseTree tree : ctx.children) {
-            String visitResult = visit(tree);
-            if (visitResult != null && visitResult.length() > 0) {
-                builder.append(visitResult);
-            } else {
-                builder.append(tree.getText());
+        else {
+            /* Iterate over all children. Check and see if their visit
+             * method was customized to return a string. Otherwise, get
+             * the raw text.
+             */
+            for (ParseTree tree : ctx.children) {
+                localBuilder.append(tree.getText());
             }
         }
-        return builder.toString();
+
+        if (varRefStack.size() > 0) {
+            varRefStack.peek().AddVariablePart(new VariablePart(localBuilder.toString(), false));
+        } else {
+            regexStack.peek().append(localBuilder.toString());
+        }
+
+        return null;
     }
 }

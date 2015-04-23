@@ -31,24 +31,55 @@ public class Variable implements IVarPartCollection {
         this._name = name;
     }
 
-    public String Resolve(VariableBox box, List<String> arguments) {
+    public String Resolve(VariableBox box, List<VariablePart> arguments) {
+        if (isVarType()) {
+            return null;
+        }
+
+        // Arguments to the variable could be references themselves in return
+        ArrayList<String> dereferencedArguments = new ArrayList<>();
+        for (VariablePart part : arguments) {
+            if (!part.IsReference()) {
+                dereferencedArguments.add(part.GetTextPart());
+                continue;
+            }
+
+            Variable var = box.GetVar(part.GetReference());
+            if (var == null) {
+                return null;
+            }
+            String derefArg = var.Resolve(box, part.GetArguments());
+            if (derefArg == null) {
+                return null;
+            }
+            dereferencedArguments.add(derefArg);
+        }
+
+        return ResolveDereferenced(box, dereferencedArguments);
+    }
+
+    private String ResolveDereferenced(VariableBox box, List<String> derefArgs) {
+        if (isVarType()) {
+            return null;
+        }
+
         StringBuilder builder = new StringBuilder();
         for (VariablePart part : _parts) {
-            if (part.IsReference()) {
-                // Get what it is referring to
-                String dereferenced = DereferenceVariable(box, part, arguments);
-                if (dereferenced == null) {
-                    return null;
-                }
-                builder.append(dereferenced);
-            } else {
-                builder.append(part.GetTextPart());
+            // Get what it is referring to
+            String dereferenced = DereferenceVariable(box, part, derefArgs);
+            if (dereferenced == null) {
+                return null;
             }
+            builder.append(dereferenced);
         }
         return builder.toString();
     }
 
     String DereferenceVariable(VariableBox box, VariablePart reference, List<String> arguments) {
+        if (!reference.IsReference()) {
+            return reference.GetTextPart();
+        }
+
         // Is it a local variable?
         for (int i = 0; i < _parameters.size(); i++) {
             String paramName = _parameters.get(i);
@@ -59,10 +90,6 @@ public class Variable implements IVarPartCollection {
 
         // Another macro or variable
         Variable var = box.GetVar(reference.GetReference());
-        if (var.isVarType()) {
-            // Reference to a variable bound at runtime
-            return null;
-        }
 
         // Arguments to the variable could be references themselves
         ArrayList<String> dereferencedArguments = new ArrayList<>();
@@ -78,7 +105,7 @@ public class Variable implements IVarPartCollection {
             }
         }
 
-        return var.Resolve(box, dereferencedArguments);
+        return var.ResolveDereferenced(box, dereferencedArguments);
     }
 
     @Override
