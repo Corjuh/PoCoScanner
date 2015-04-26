@@ -1,8 +1,11 @@
 package com.coryjuhlin.pocoscanner;
 
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 
+/**
+ * Lightweight container of Variable objects. Represents the policy-level
+ * scope of variables for lookup.
+ */
 public class VariableBox {
 
     public LinkedHashMap<String, Variable> box;

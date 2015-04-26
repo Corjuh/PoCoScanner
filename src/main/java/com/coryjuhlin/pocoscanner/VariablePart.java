@@ -5,7 +5,9 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Created by cory on 4/13/15.
+ * Part of a Variable. A series of VariableParts combine to form
+ * the contents of a single variable. A VariablePart can either be
+ * pure text or a reference to another variable(or argument).
  */
 public class VariablePart implements IVarPartCollection {
     private String _textPart;
@@ -35,6 +37,11 @@ public class VariablePart implements IVarPartCollection {
         return args;
     }
 
+    /**
+     * Adds a VariablePart to the arguments list for this variable reference
+     * @param part argument to add
+     * @return
+     */
     public boolean AddVariablePart(VariablePart part) {
         return args.add(part);
     }

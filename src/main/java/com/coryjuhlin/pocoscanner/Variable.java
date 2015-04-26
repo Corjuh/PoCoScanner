@@ -4,7 +4,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Created by cory on 4/13/15.
+ * Represents a variable in the PoCo runtime.
+ * A variable consists of the following parts:
+ *  - Name
+ *  - List of parameter names
+ *  - List of parts (i.e. plain text chunks and references to other variables)
  */
 public class Variable implements IVarPartCollection {
     private String _name;
@@ -15,6 +19,11 @@ public class Variable implements IVarPartCollection {
         return _name;
     }
 
+    /**
+     * Determines whether the variable is bound at runtime (i.e. is a var and not
+     * a PoCo function)
+     * @return true if variable bound at runtime, otherwise false
+     */
     public boolean isVarType() {
         return _parts.size() == 0;
     }
@@ -31,6 +40,14 @@ public class Variable implements IVarPartCollection {
         this._name = name;
     }
 
+    /**
+     * Converts the variable (or function) into a string using the provided arguments. All
+     * references are dereferenced during the process. If any dereferencing fails (i.e. reference
+     * to a variable bound at runtime), null will be returned.
+     * @param box VariableBox to use for reference lookup
+     * @param arguments List of argument values corresponding to this variable's parameters
+     * @return Completely dereferenced string contents of variable
+     */
     public String Resolve(VariableBox box, List<VariablePart> arguments) {
         if (isVarType()) {
             return null;

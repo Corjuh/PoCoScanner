@@ -35,14 +35,19 @@ public class RegexVisitor extends PoCoParserBaseVisitor<String> {
     public String visitMatch(@NotNull PoCoParser.MatchContext ctx) {
         regexStack.push(new StringBuilder());
 
+        // Two things we care about : IRE (e.g. Action() or Result()), or
+        // a variable bindig (e.g. @call[`dostuff()'])
         if (ctx.ire() != null) {
             visit(ctx.ire());
         } else if (ctx.AT() != null) {
+            // Ignore all parts of the variable binding except the RE
             visit(ctx.re());
         }
 
         StringBuilder builder = regexStack.pop();
+
         if (!runtimeReference) {
+            // Add string if it does not contain a variable bound at runtime
             matchStrings.add(builder.toString());
         }
 
@@ -75,6 +80,7 @@ public class RegexVisitor extends PoCoParserBaseVisitor<String> {
 
         StringBuilder localBuilder = new StringBuilder();
 
+        // Variable reference
         if (ctx.DOLLAR() != null) {
             VariablePart ref = parseVarRef(ctx);
             Variable var = variableBox.GetVar(ref.GetReference());
@@ -86,10 +92,12 @@ public class RegexVisitor extends PoCoParserBaseVisitor<String> {
             }
         }
 
+        // Variable binding
         else if (ctx.AT() != null) {
             visit(ctx.re().get(0));
         }
 
+        // Plain text
         else {
             /* Iterate over all children. Check and see if their visit
              * method was customized to return a string. Otherwise, get
