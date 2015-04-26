@@ -2,8 +2,10 @@ package com.coryjuhlin.pocoscanner;
 
 import com.coryjuhlin.pocoscanner.antlr.PoCoParser;
 import com.coryjuhlin.pocoscanner.antlr.PoCoParserBaseVisitor;
+import com.sun.xml.internal.xsom.impl.Ref;
 import org.antlr.v4.runtime.misc.NotNull;
 import org.antlr.v4.runtime.tree.ParseTree;
+import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.util.Stack;
 
@@ -68,16 +70,44 @@ public class VariableVisitor extends PoCoParserBaseVisitor<String> {
 
         StringBuilder builder = new StringBuilder();
         for (ParseTree tree : ctx.children) {
-            if (tree instanceof PoCoParser.ReContext) {
+            if (tree instanceof  TerminalNode || tree instanceof PoCoParser.RebopContext || tree instanceof PoCoParser.ReuopContext) {
+                builder.append(tree.getText());
+            }
+
+            if (builder.length() > 0) {
+                partCollectors.peek().AddVariablePart(new VariablePart(builder.toString(), false));
+                builder = new StringBuilder();
+            }
+
+            visit(tree);
+        }
+        if (builder.length() > 0) {
+            partCollectors.peek().AddVariablePart(new VariablePart(builder.toString(), false));
+        }
+
+        return null;
+    }
+
+
+    @Override
+    public String visitFunction(@NotNull PoCoParser.FunctionContext ctx) {
+        if (currentVariable == null) {
+            return null;
+        }
+
+        StringBuilder builder = new StringBuilder();
+        for (ParseTree tree : ctx.children) {
+            if (tree instanceof PoCoParser.ArglistContext) {
                 if (builder.length() > 0) {
                     partCollectors.peek().AddVariablePart(new VariablePart(builder.toString(), false));
+                    builder = new StringBuilder();
                 }
-                builder = new StringBuilder();
                 visit(tree);
             } else {
                 builder.append(tree.getText());
             }
         }
+
         if (builder.length() > 0) {
             partCollectors.peek().AddVariablePart(new VariablePart(builder.toString(), false));
         }

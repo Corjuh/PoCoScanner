@@ -86,7 +86,11 @@ public class RegexVisitor extends PoCoParserBaseVisitor<String> {
              * the raw text.
              */
             for (ParseTree tree : ctx.children) {
-                localBuilder.append(tree.getText());
+                if (tree instanceof PoCoParser.ReContext) {
+                    visit(tree);
+                } else {
+                    localBuilder.append(tree.getText());
+                }
             }
         }
 
