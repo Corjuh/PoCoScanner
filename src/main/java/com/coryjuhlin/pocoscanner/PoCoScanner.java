@@ -135,11 +135,12 @@ public class PoCoScanner implements ActionListener, ListSelectionListener, ItemL
                 pocoFile = pocoFileChooser.getSelectedFile();
                 regexFileField.setText(pocoFile.getName());
                 regexFileField.setToolTipText(pocoFile.getPath());
-                try {
-                    ScanPoCoPolicy();
-                } catch (Exception ex) {
-                    ex.printStackTrace();
-                }
+
+//                try {
+//                    ScanPoCoPolicy();
+//                } catch (Exception ex) {
+//                    ex.printStackTrace();
+//                }
             }
         } else if(e.getSource() == generateButton) {
             generationTimeLabel.setText("Generating...");
@@ -417,30 +418,6 @@ public class PoCoScanner implements ActionListener, ListSelectionListener, ItemL
         }
     }
 
-    public void ScanPoCoPolicy() throws Exception {
-        PoCoLexer lexer = new PoCoLexer(new ANTLRInputStream(new FileReader(pocoFile)));
-        PoCoParser parser = new PoCoParser(new CommonTokenStream(lexer));
-
-        VariableVisitor varVisitor = new VariableVisitor();
-        varVisitor.visit(parser.policy());
-
-        lexer.reset();
-        parser.reset();
-
-        RegexVisitor regexVisitor = new RegexVisitor(varVisitor.variableBox);
-        regexVisitor.visit(parser.policy());
-
-        System.out.println();
-        for (Map.Entry<String, Variable> entry : varVisitor.variableBox.box.entrySet()) {
-            System.out.println(entry.getValue().toString());
-        }
-
-        for (String item : regexVisitor.matchStrings) {
-            System.out.println(item);
-        }
-        //System.out.println(varVisitor.variableBox.GetVar("hey").Resolve(varVisitor.variableBox, args));
-    }
-
     public static void main(String[] args) {
         if(DEBUG_MODE) {
             System.out.println("main: " + Thread.currentThread().getId());
@@ -449,14 +426,13 @@ public class PoCoScanner implements ActionListener, ListSelectionListener, ItemL
         new PoCoScanner();
     }
 
-
     private class JavaFileLoader extends SwingWorker<LinkedHashMap<String, ArrayList<String>>, Void> {
         private File[] javaFiles = null;
-        private File regexFileToScan = null;
+        private File pocoFileToScan = null;
 
-        public JavaFileLoader(File[] javaFilesToScan, File regexFileToScan) {
+        public JavaFileLoader(File[] javaFilesToScan, File pocoFileToScan) {
             javaFiles = javaFilesToScan;
-            this.regexFileToScan = regexFileToScan;
+            this.pocoFileToScan = pocoFileToScan;
         }
 
         @Override
@@ -484,32 +460,24 @@ public class PoCoScanner implements ActionListener, ListSelectionListener, ItemL
                 }
             }
 
-            ArrayList<String> regexes = new ArrayList<>();
+            String[] regexes = new String[0];
 
-            if (regexFileToScan == null) {
+            if (pocoFileToScan == null) {
                 return null;
             }
 
-            try (BufferedReader br = new BufferedReader(new FileReader(regexFileToScan))) {
-                String regex = null;
-                while ((regex = br.readLine()) != null) {
-                    if(regex.trim().length() > 0) {
-                        regexes.add(regex);
-                    }
-                }
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
-                return null;
-            } catch (IOException e) {
-                e.printStackTrace();
-                return null;
+            try {
+                regexes = ScanPoCoPolicy();
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                System.exit(-1);
             }
 
             numMethods = methods.size();
 
-            LinkedHashMap<String, ArrayList<String>> mappings = new LinkedHashMap<>(regexes.size());
+            LinkedHashMap<String, ArrayList<String>> mappings = new LinkedHashMap<>(regexes.length);
 
-            final int numRegexes = regexes.size();
+            final int numRegexes = regexes.length;
             final int regexPerThread = (int) Math.ceil((double) numRegexes / (double) NUM_THREADS);
 
             ArrayList<MapGenerator> toRun = new ArrayList<>(NUM_THREADS);
@@ -549,21 +517,25 @@ public class PoCoScanner implements ActionListener, ListSelectionListener, ItemL
                 }
             }
 
-//			for(String regex : regexes) {
-//				Pattern pat = Pattern.compile(regex);
-//				ArrayList<String> mappedmethods = new ArrayList<>();
-//
-//				for(String methodcall : methods) {
-//					Matcher match = pat.matcher(methodcall);
-//					if(match.find()) {
-//						mappedmethods.add(methodcall);
-//					}
-//				}
-//
-//				mappings.put(regex, mappedmethods);
-//			}
-
             return mappings;
+        }
+
+        public String[] ScanPoCoPolicy() throws Exception {
+            PoCoLexer lexer = new PoCoLexer(new ANTLRInputStream(new FileReader(pocoFileToScan)));
+            PoCoParser parser = new PoCoParser(new CommonTokenStream(lexer));
+
+            VariableVisitor varVisitor = new VariableVisitor();
+            varVisitor.visit(parser.policy());
+
+            lexer.reset();
+            parser.reset();
+
+            RegexVisitor regexVisitor = new RegexVisitor(varVisitor.variableBox);
+            regexVisitor.visit(parser.policy());
+
+            return regexVisitor.matchStrings.stream()
+                    .filter(regex -> regex != null)
+                    .toArray(String[]::new);
         }
 
         @Override
@@ -587,10 +559,10 @@ public class PoCoScanner implements ActionListener, ListSelectionListener, ItemL
     private class MapGenerator implements Callable<LinkedHashMap<String, ArrayList<String>>> {
         private final int startIndex;
         private final int numMaps;
-        private final ArrayList<String> regexList;
+        private final String[] regexList;
         private final LinkedHashSet<String> methodList;
 
-        public MapGenerator(LinkedHashSet<String> methodList, ArrayList<String> regexList, int startIndex, int numMaps) {
+        public MapGenerator(LinkedHashSet<String> methodList, String[] regexList, int startIndex, int numMaps) {
             this.startIndex = startIndex;
             this.numMaps = numMaps;
             this.regexList = regexList;
@@ -606,7 +578,7 @@ public class PoCoScanner implements ActionListener, ListSelectionListener, ItemL
             LinkedHashMap<String, ArrayList<String>> maps = new LinkedHashMap<>(numMaps);
 
             for(int i = startIndex; i < startIndex + numMaps; i++) {
-                String regex = regexList.get(i);
+                String regex = regexList[i];
                 Pattern pat = Pattern.compile(regex);
                 ArrayList<String> mappedMethods = new ArrayList<>();
 
