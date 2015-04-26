@@ -32,12 +32,14 @@ public class RegexVisitor extends PoCoParserBaseVisitor<String> {
     }
 
     @Override
-    public String visitIre(@NotNull PoCoParser.IreContext ctx) {
+    public String visitMatch(@NotNull PoCoParser.MatchContext ctx) {
         regexStack.push(new StringBuilder());
 
-        // Only visit first RE (second one would be the value matcher of RESULT IREs)
-        //String text = visit(ctx.re(0));
-        visit(ctx.re(0));
+        if (ctx.ire() != null) {
+            visit(ctx.ire());
+        } else if (ctx.AT() != null) {
+            visit(ctx.re());
+        }
 
         StringBuilder builder = regexStack.pop();
         if (!runtimeReference) {
@@ -45,6 +47,14 @@ public class RegexVisitor extends PoCoParserBaseVisitor<String> {
         }
 
         runtimeReference = false;
+        return null;
+    }
+
+    @Override
+    public String visitIre(@NotNull PoCoParser.IreContext ctx) {
+        // Only visit first RE (second one would be the value matcher of RESULT IREs)
+        visit(ctx.re(0));
+
         return null;
     }
 
@@ -77,7 +87,7 @@ public class RegexVisitor extends PoCoParserBaseVisitor<String> {
         }
 
         else if (ctx.AT() != null) {
-            // TODO: Do something about the variable binding
+            visit(ctx.re().get(0));
         }
 
         else {
