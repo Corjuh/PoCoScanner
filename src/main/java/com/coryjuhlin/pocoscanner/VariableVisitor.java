@@ -2,7 +2,6 @@ package com.coryjuhlin.pocoscanner;
 
 import com.coryjuhlin.pocoscanner.antlr.PoCoParser;
 import com.coryjuhlin.pocoscanner.antlr.PoCoParserBaseVisitor;
-import com.sun.xml.internal.xsom.impl.Ref;
 import org.antlr.v4.runtime.misc.NotNull;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
