@@ -19,3 +19,5 @@ Changes to the grammar files in `src/main/antlr` will require the ANTLR sources 
 be regenerated (and may break code that interacts with this generated code). Java
 files generated from the ANTLR grammars should reside in `src/main/java` in the
 `com.coryjuhlin.pocoscanner.antlr` namespace.
+
+To build an executable JAR file, run the Gradle `shadowJar` task.
