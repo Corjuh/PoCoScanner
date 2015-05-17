@@ -426,9 +426,18 @@ public class PoCoScanner implements ActionListener, ListSelectionListener, ItemL
         new PoCoScanner();
     }
 
+    public void ShowIncompleteWarning() {
+        JOptionPane.showMessageDialog(null,
+                "One or more variables have a value that is bound during runtime.\nThe generated mappings may be " +
+                        "incomplete.",
+                "Potential Incompleteness",
+                JOptionPane.WARNING_MESSAGE);
+    }
+
     private class JavaFileLoader extends SwingWorker<LinkedHashMap<String, ArrayList<String>>, Void> {
         private File[] javaFiles = null;
         private File pocoFileToScan = null;
+        private boolean runtimeBoundVar = false;
 
         public JavaFileLoader(File[] javaFilesToScan, File pocoFileToScan) {
             javaFiles = javaFilesToScan;
@@ -533,6 +542,8 @@ public class PoCoScanner implements ActionListener, ListSelectionListener, ItemL
             RegexVisitor regexVisitor = new RegexVisitor(varVisitor.variableBox);
             regexVisitor.visit(parser.policy());
 
+            runtimeBoundVar = regexVisitor.hasUndefinedVariable;
+
             return regexVisitor.matchStrings.stream()
                     .filter(regex -> regex != null)
                     .toArray(String[]::new);
@@ -550,6 +561,10 @@ public class PoCoScanner implements ActionListener, ListSelectionListener, ItemL
                 System.out.println("ERROR: Returning from JavaFileLoader execution\n");
                 System.out.println(e.getMessage());
                 e.printStackTrace();
+            }
+
+            if (runtimeBoundVar) {
+                ShowIncompleteWarning();
             }
 
             generateComplete();

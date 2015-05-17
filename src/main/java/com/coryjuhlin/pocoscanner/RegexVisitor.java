@@ -12,6 +12,7 @@ import java.util.Stack;
 public class RegexVisitor extends PoCoParserBaseVisitor<String> {
     private Stack<StringBuilder> regexStack;
     public ArrayList<String> matchStrings;
+    public boolean hasUndefinedVariable = false;
     private VariableBox variableBox;
     private Stack<VariablePart> varRefStack = new Stack<>();
     private boolean runtimeReference = false;
@@ -49,6 +50,8 @@ public class RegexVisitor extends PoCoParserBaseVisitor<String> {
         if (!runtimeReference) {
             // Add string if it does not contain a variable bound at runtime
             matchStrings.add(builder.toString());
+        } else {
+            hasUndefinedVariable = true;
         }
 
         runtimeReference = false;
